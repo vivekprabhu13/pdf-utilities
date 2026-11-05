@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Privacy lock: the page cannot make network requests or load remote images. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; worker-src 'self' blob:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<title>PDF Toolkit — private, in-browser PDF tools</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Cpath d='M9 6h9l5 5v15H9z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo">PDF</span> Toolkit</div>
+  <div class="privacy" title="Everything runs in your browser. No uploads, no servers, no tracking.">🔒 100% client-side · files never leave your device</div>
+</header>
+
+<div class="layout">
+  <nav class="side" id="nav">
+    <button data-tool="organizer" class="active"><i>🗂️</i><span>Organize</span><small>reorder · delete · rotate</small></button>
+    <button data-tool="merge"><i>🧩</i><span>Merge</span><small>combine PDFs</small></button>
+    <button data-tool="split"><i>✂️</i><span>Split</span><small>ranges · every N pages</small></button>
+    <button data-tool="compress"><i>🗜️</i><span>Compress</span><small>shrink file size</small></button>
+    <button data-tool="flipbook"><i>📖</i><span>Flipbook</span><small>page-turn viewer + zoom</small></button>
+    <button data-tool="img2pdf"><i>🖼️</i><span>Image → PDF</span><small>JPG · PNG · WebP</small></button>
+    <button data-tool="html2pdf"><i>🌐</i><span>HTML → PDF</span><small>paste or upload HTML</small></button>
+    <button data-tool="pdf2text"><i>📝</i><span>PDF → Text</span><small>extract &amp; save .txt</small></button>
+  </nav>
+
+  <main>
+    <!-- ORGANIZER -->
+    <section class="tool active" id="tool-organizer">
+      <h1>Organize PDF</h1>
+      <p class="lead">Drag pages to reorder, rotate or delete them, and add pages from other PDFs. Then export the result.</p>
+      <label class="drop" id="org-drop"><input type="file" accept="application/pdf,.pdf" multiple hidden><b>Drop PDF files here</b><span>or click to browse — you can add several</span></label>
+      <div id="org-ui" hidden>
+        <div class="toolbar">
+          <span id="org-count" class="muted"></span>
+          <span class="spacer"></span>
+          <button class="btn" id="org-undo" disabled>↶ Undo</button>
+          <button class="btn" id="org-reverse">⇅ Reverse</button>
+          <button class="btn" id="org-add">＋ Add PDFs</button>
+          <button class="btn" id="org-clear">Clear all</button>
+          <button class="btn primary" id="org-export">Export PDF</button>
+        </div>
+        <div class="grid" id="org-grid"></div>
+      </div>
+    </section>
+
+    <!-- MERGE -->
+    <section class="tool" id="tool-merge">
+      <h1>Merge PDFs</h1>
+      <p class="lead">Combine several PDFs into one. Drag the rows (or use the arrows) to set the order.</p>
+      <label class="drop" id="merge-drop"><input type="file" accept="application/pdf,.pdf" multiple hidden><b>Drop PDF files here</b><span>or click to browse</span></label>
+      <div id="merge-ui" hidden>
+        <div class="list" id="merge-list"></div>
+        <div class="toolbar">
+          <span id="merge-info" class="muted"></span><span class="spacer"></span>
+          <button class="btn" id="merge-clear">Clear</button>
+          <button class="btn primary" id="merge-go">Merge &amp; download</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SPLIT -->
+    <section class="tool" id="tool-split">
+      <h1>Split PDF</h1>
+      <p class="lead">Cut a PDF into pieces by page ranges, fixed-size chunks, or single pages.</p>
+      <label class="drop" id="split-drop"><input type="file" accept="application/pdf,.pdf" hidden><b>Drop a PDF here</b><span>or click to browse</span></label>
+      <div id="split-ui" hidden>
+        <div class="fileinfo" id="split-info"></div>
+        <div class="options">
+          <label class="radio"><input type="radio" name="split-mode" value="ranges" checked> <span><b>Custom ranges → separate files</b><small>e.g. <code>1-3, 4-6, 9</code> gives three PDFs</small></span></label>
+          <label class="radio"><input type="radio" name="split-mode" value="extract"> <span><b>Extract pages → one file</b><small>e.g. <code>1-3, 8, 5</code> keeps those pages in that order</small></span></label>
+          <label class="radio"><input type="radio" name="split-mode" value="every"> <span><b>Every N pages</b><small>split into equal chunks</small></span></label>
+          <label class="radio"><input type="radio" name="split-mode" value="single"> <span><b>Every page</b><small>one PDF per page</small></span></label>
+        </div>
+        <div class="row">
+          <label id="split-ranges-wrap">Page ranges <input type="text" id="split-ranges" placeholder="1-3, 4-6, 9"></label>
+          <label id="split-n-wrap" hidden>Pages per file <input type="number" id="split-n" min="1" value="1"></label>
+        </div>
+        <div class="toolbar"><span class="spacer"></span><button class="btn" id="split-clear">Clear</button><button class="btn primary" id="split-go">Split &amp; download</button></div>
+      </div>
+    </section>
+
+    <!-- COMPRESS -->
+    <section class="tool" id="tool-compress">
+      <h1>Compress PDF</h1>
+      <p class="lead">Reduce file size. Strong modes re-render pages as images (text becomes non-selectable); "Optimize only" keeps everything intact.</p>
+      <label class="drop" id="comp-drop"><input type="file" accept="application/pdf,.pdf" hidden><b>Drop a PDF here</b><span>or click to browse</span></label>
+      <div id="comp-ui" hidden>
+        <div class="fileinfo" id="comp-info"></div>
+        <div class="options">
+          <label class="radio"><input type="radio" name="comp-mode" value="lossless"> <span><b>Optimize only</b><small>Lossless — repacks structure, keeps text &amp; quality. Small savings.</small></span></label>
+          <label class="radio"><input type="radio" name="comp-mode" value="light" checked> <span><b>Balanced</b><small>150 DPI images, good quality</small></span></label>
+          <label class="radio"><input type="radio" name="comp-mode" value="medium"> <span><b>Strong</b><small>110 DPI, smaller file</small></span></label>
+          <label class="radio"><input type="radio" name="comp-mode" value="extreme"> <span><b>Maximum</b><small>72 DPI — smallest, screen reading only</small></span></label>
+        </div>
+        <div class="toolbar"><span class="spacer"></span><button class="btn" id="comp-clear">Clear</button><button class="btn primary" id="comp-go">Compress</button></div>
+        <div class="result" id="comp-result" hidden></div>
+      </div>
+    </section>
+
+    <!-- FLIPBOOK -->
+    <section class="tool" id="tool-flipbook">
+      <h1>PDF → Flipbook</h1>
+      <p class="lead">View a PDF as a page-turning book. Zoom with the slider, <kbd>Ctrl</kbd>+scroll, or double-click; drag to pan.</p>
+      <label class="drop" id="fb-drop"><input type="file" accept="application/pdf,.pdf" hidden><b>Drop a PDF here</b><span>or click to browse</span></label>
+      <div id="fb-ui" hidden>
+        <div class="viewer" id="fb-viewer">
+          <div class="toolbar fbbar">
+            <button class="btn" id="fb-first" title="First page">⏮</button>
+            <button class="btn" id="fb-prev" title="Previous (←)">◀</button>
+            <span class="pager"><input type="number" id="fb-page" min="1" value="1"> / <span id="fb-total">1</span></span>
+            <button class="btn" id="fb-next" title="Next (→)">▶</button>
+            <button class="btn" id="fb-last" title="Last page">⏭</button>
+            <span class="spacer"></span>
+            <button class="btn" id="fb-zout" title="Zoom out (−)">−</button>
+            <input type="range" id="fb-zoom" min="50" max="400" value="100" step="5">
+            <button class="btn" id="fb-zin" title="Zoom in (+)">＋</button>
+            <span id="fb-zlabel" class="zlabel">100%</span>
+            <button class="btn" id="fb-fit" title="Reset zoom (0)">Fit</button>
+            <button class="btn" id="fb-full" title="Fullscreen (F)">⛶</button>
+            <button class="btn" id="fb-close">Close</button>
+          </div>
+          <div class="stage" id="fb-stage"><div class="book" id="fb-book"><div class="pg L" id="fb-L"></div><div class="pg R" id="fb-R"></div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- IMAGE TO PDF -->
+    <section class="tool" id="tool-img2pdf">
+      <h1>Image → PDF</h1>
+      <p class="lead">Turn JPG, PNG, WebP, GIF or BMP images into a single PDF — one image per page.</p>
+      <label class="drop" id="img-drop"><input type="file" accept="image/*" multiple hidden><b>Drop images here</b><span>or click to browse</span></label>
+      <div id="img-ui" hidden>
+        <div class="grid small" id="img-grid"></div>
+        <div class="row">
+          <label>Page size <select id="img-size"><option value="fit">Fit to image</option><option value="a4" selected>A4</option><option value="letter">US Letter</option></select></label>
+          <label>Orientation <select id="img-orient"><option value="auto" selected>Auto</option><option value="p">Portrait</option><option value="l">Landscape</option></select></label>
+          <label>Margin <select id="img-margin"><option value="0">None</option><option value="18" selected>Small</option><option value="36">Medium</option><option value="54">Large</option></select></label>
+        </div>
+        <div class="toolbar"><span id="img-info" class="muted"></span><span class="spacer"></span><button class="btn" id="img-add">＋ Add more</button><button class="btn" id="img-clear">Clear</button><button class="btn primary" id="img-go">Create PDF</button></div>
+      </div>
+    </section>
+
+    <!-- HTML TO PDF -->
+    <section class="tool" id="tool-html2pdf">
+      <h1>HTML → PDF</h1>
+      <p class="lead">Paste HTML or open an .html file, preview it, and save as PDF. Scripts are disabled and remote resources are blocked, so embed images as data URIs.</p>
+      <div class="split2">
+        <div>
+          <div class="toolbar"><b>HTML source</b><span class="spacer"></span><label class="btn small">Open .html file<input type="file" id="html-file" accept=".html,.htm,text/html" hidden></label></div>
+          <textarea id="html-src" spellcheck="false"></textarea>
+        </div>
+        <div>
+          <div class="toolbar"><b>Preview</b></div>
+          <div class="previewbox"><iframe id="html-frame" sandbox="allow-same-origin" title="HTML preview"></iframe></div>
+        </div>
+      </div>
+      <div class="row">
+        <label>Page size <select id="html-size"><option value="a4" selected>A4</option><option value="letter">US Letter</option><option value="legal">US Legal</option></select></label>
+        <label>Orientation <select id="html-orient"><option value="p" selected>Portrait</option><option value="l">Landscape</option></select></label>
+        <label>Margin <select id="html-margin"><option value="0">None</option><option value="28">Small</option><option value="43" selected>Medium</option><option value="72">Large</option></select></label>
+        <label>Quality <select id="html-scale"><option value="1.5">Standard</option><option value="2" selected>High</option><option value="3">Very high</option></select></label>
+      </div>
+      <div class="toolbar"><span class="spacer"></span><button class="btn primary" id="html-go">Convert to PDF</button></div>
+      <p class="note">Pages are rendered as images, so text in the PDF is not selectable.</p>
+    </section>
+
+    <!-- PDF TO TEXT -->
+    <section class="tool" id="tool-pdf2text">
+      <h1>PDF → Text</h1>
+      <p class="lead">Extract the text from a PDF and save it as a .txt file.</p>
+      <label class="drop" id="txt-drop"><input type="file" accept="application/pdf,.pdf" hidden><b>Drop a PDF here</b><span>or click to browse</span></label>
+      <div id="txt-ui" hidden>
+        <div class="fileinfo" id="txt-info"></div>
+        <div class="row"><label class="check"><input type="checkbox" id="txt-sep" checked> Add page separators</label></div>
+        <textarea id="txt-out" readonly spellcheck="false" placeholder="Extracted text appears here…"></textarea>
+        <div class="toolbar"><span id="txt-stats" class="muted"></span><span class="spacer"></span><button class="btn" id="txt-clear">Clear</button><button class="btn" id="txt-copy" disabled>Copy</button><button class="btn primary" id="txt-save" disabled>Save .txt</button></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="busy" hidden><div class="busybox"><div class="spinner"></div><p id="busy-msg">Working…</p><div class="bar"><i id="busy-bar"></i></div></div></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="vendor/pdf-lib.min.js"></script>
+<script src="vendor/pdf.min.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/html2canvas.min.js"></script>
+<script src="vendor/jszip.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
